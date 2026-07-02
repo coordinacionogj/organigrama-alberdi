@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organigrama Dinámico</title>
+    <!-- Cargamos Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cargamos Lucide Icons para la iconografía -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Pequeño ajuste para transiciones suaves */
+        .transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans p-4 md:p-8 min-h-screen">
+
+    <!-- Cabecera y Controles -->
+    <div class="max-w-7xl mx-auto mb-8 bg-white rounded-2xl shadow-sm p-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-gray-200">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i data-lucide="layout-template" class="w-6 h-6 text-indigo-600"></i>
+                Estructura Organizacional (13 Personas)
+            </h1>
+            <p class="text-gray-500 text-sm mt-1">Con integración de nuevos perfiles (Lics, Analistas)</p>
+        </div>
+        
+        <div class="flex bg-gray-100 p-1 rounded-lg" id="view-controls">
+            <button onclick="setView('original')" id="btn-original" class="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-gray-600 hover:text-gray-900">
+                <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                Plano / Horizontal
+            </button>
+            <button onclick="setView('sugerida')" id="btn-sugerida" class="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 bg-white text-indigo-700 shadow-sm">
+                <i data-lucide="git-merge" class="w-4 h-4"></i>
+                Por Áreas Estratégicas
+            </button>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal del Organigrama -->
+    <div class="max-w-7xl mx-auto" id="org-container">
+        <!-- El contenido se inyectará aquí vía JavaScript -->
+    </div>
+
+    <script>
+        // --- DATOS DEL ORGANIGRAMA ---
+        const coordinacion = {
+            area: "Coordinación General",
+            responsable: "Analía (Directora/Líder)",
+            rol: "Definición Estratégica",
+            icon: "network",
+            iconClass: "text-indigo-600",
+            color: "border-indigo-500",
+            bg: "bg-indigo-50",
+            equipo: [
+                { rol: "2 Lic. en Administración", funcion: "Soporte en Logística y Planificación" }
+            ],
+            tareas: [
+                "Planificación", "Logística", "Coord. implementación", 
+                "Reuniones instituc.", "Nexo", "Seguimiento"
+            ]
+        };
+
+        const areas = [
+            {
+                id: "rrhh", area: "Recursos Humanos", responsable: "Euge (Líder)",
+                icon: "users", iconClass: "text-blue-600", color: "border-blue-500", bg: "bg-blue-50",
+                equipo: [{ rol: "1 Lic. en Administración", funcion: "Foco en Admin. de Personal" }],
+                tareas: ["Perfiles - reclutamiento", "Relevamiento Personal", "Entrevistas", "Soporte - Seguimiento", "Admin. de Personal", "Desarrollo organiz.", "Comunicación int. y ext."]
+            },
+            {
+                id: "capacitacion", area: "Capacitación", responsable: "Lina (Líder)",
+                icon: "graduation-cap", iconClass: "text-cyan-600", color: "border-cyan-500", bg: "bg-cyan-50",
+                equipo: [],
+                tareas: ["Formación y Des.", "Programas de Capac.", "Instructivos", "Detecc. de Neces. de capacit.", "Atención y debida diligencia - estándares", "Sensibilización social"]
+            },
+            {
+                id: "datos", area: "Datos (Data & Analytics)", responsable: "Gisela (Líder)",
+                icon: "database", iconClass: "text-emerald-600", color: "border-emerald-500", bg: "bg-emerald-50",
+                equipo: [{ rol: "2 Analistas de Datos", funcion: "Dashboarding, Análisis y ETL" }],
+                tareas: ["Relevamiento y recopilación", "Gestión de indicadores", "Análisis", "Visualización", "Reuniones con actores externos", "Estadísticas"]
+            },
+            {
+                id: "sistemas", area: "Sistemas e IT", responsable: "Juan (Líder)",
+                icon: "monitor", iconClass: "text-teal-600", color: "border-teal-500", bg: "bg-teal-50",
+                equipo: [],
+                tareas: ["Desarrollo", "Complementos (Planillas, herram.)", "Ideas - mejoras", "Programas", "Parametrización", "Nexo"]
+            },
+            {
+                id: "procesos", area: "Procesos", responsable: "Líder a definir",
+                icon: "settings", iconClass: "text-orange-600", color: "border-orange-500", bg: "bg-orange-50",
+                equipo: [{ rol: "2 Analistas de Procesos", funcion: "Mapeo y mejora continua" }, { rol: "1 Lic. en Administración", funcion: "Soporte documental/gestión" }],
+                tareas: ["Estandarización", "Desarrollo", "Diagnóstico de procesos", "Mapeo y modelado", "Mejora continua"]
+            }
+        ];
+
+        // --- FUNCIONES DE RENDERIZADO ---
+
+        // Generar HTML de una Tarjeta de Área
+        function renderCard(data, suggestedRole = '') {
+            let equipoHtml = '';
+            if (data.equipo.length > 0) {
+                equipoHtml = data.equipo.map(eq => `
+                    <div class="flex flex-col bg-white border border-gray-200 rounded px-2 py-1 shadow-sm">
+                        <span class="text-sm font-bold text-gray-700">${eq.rol}</span>
+                        <span class="text-[11px] text-gray-500 leading-tight">${eq.funcion}</span>
+                    </div>
+                `).join('');
+            } else {
+                equipoHtml = `<span class="text-xs text-gray-400 italic">Sin equipo asignado aún</span>`;
+            }
+
+            let tareasHtml = data.tareas.map(tarea => `
+                <li class="flex items-start gap-2 text-sm text-gray-600">
+                    <i data-lucide="check-circle-2" class="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0"></i>
+                    <span class="leading-tight">${tarea}</span>
+                </li>
+            `).join('');
+
+            let roleHtml = suggestedRole ? `<span class="inline-block mt-2 px-2 py-1 bg-white border border-gray-200 text-xs font-bold rounded-md text-gray-600 shadow-sm">${suggestedRole}</span>` : '';
+
+            return `
+            <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-t-4 ${data.color} flex flex-col h-full overflow-hidden">
+                <div class="p-4 border-b ${data.bg} flex items-start justify-between">
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg leading-tight">${data.area}</h3>
+                        <p class="text-sm font-semibold text-gray-700 mt-1">${data.responsable}</p>
+                        ${roleHtml}
+                    </div>
+                    <div class="p-2 bg-white rounded-full shadow-sm flex-shrink-0">
+                        <i data-lucide="${data.icon}" class="w-5 h-5 ${data.iconClass}"></i>
+                    </div>
+                </div>
+                
+                <div class="px-4 py-3 bg-gray-50 border-b border-gray-100 min-h-[70px]">
+                    <div class="flex items-center gap-1.5 mb-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Equipo a cargo
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        ${equipoHtml}
+                    </div>
+                </div>
+
+                <div class="p-4 flex-grow bg-white">
+                    <ul class="space-y-2">
+                        ${tareasHtml}
+                    </ul>
+                </div>
+            </div>`;
+        }
+
+        // Generar HTML de la Coordinación (Cabecera Principal)
+        function renderCoordinacion() {
+            let equipoHtml = coordinacion.equipo.map(eq => `
+                <div class="bg-white border border-indigo-200 rounded-lg px-3 py-2 shadow-sm">
+                    <p class="font-bold text-indigo-900 text-sm">${eq.rol}</p>
+                    <p class="text-xs text-indigo-600 mt-0.5">${eq.funcion}</p>
+                </div>
+            `).join('');
+
+            let tareasHtml = coordinacion.tareas.map(tarea => `
+                <div class="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 p-2 rounded-md border border-gray-100">
+                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
+                    <span class="font-medium leading-tight">${tarea}</span>
+                </div>
+            `).join('');
+
+            return `
+            <div class="flex justify-center mb-12 relative">
+                <div class="w-full max-w-md relative z-10">
+                    <div class="bg-white rounded-2xl shadow-lg border-t-8 ${coordinacion.color} overflow-hidden">
+                        <div class="p-5 text-center ${coordinacion.bg}">
+                            <h2 class="text-2xl font-black text-gray-800">${coordinacion.area}</h2>
+                            <p class="text-lg font-bold text-indigo-700 mt-1">${coordinacion.responsable}</p>
+                        </div>
+                        
+                        <div class="px-6 py-3 bg-indigo-50/50 border-y border-indigo-100 flex justify-center">
+                            <div class="text-center">
+                                <p class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Equipo Directo</p>
+                                ${equipoHtml}
+                            </div>
+                        </div>
+
+                        <div class="p-5 bg-white">
+                            <div class="grid grid-cols-2 gap-2">
+                                ${tareasHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="absolute top-full left-1/2 w-0.5 h-12 bg-gray-300 -translate-x-1/2"></div>
+            </div>`;
+        }
+
+        // --- LÓGICA DE VISTAS ---
+        let currentView = 'sugerida';
+
+        function setView(view) {
+            currentView = view;
+            
+            // Actualizar estilos de botones
+            const btnOrig = document.getElementById('btn-original');
+            const btnSug = document.getElementById('btn-sugerida');
+            
+            if (view === 'original') {
+                btnOrig.className = "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 bg-white text-indigo-700 shadow-sm";
+                btnSug.className = "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-gray-600 hover:text-gray-900";
+            } else {
+                btnSug.className = "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 bg-white text-indigo-700 shadow-sm";
+                btnOrig.className = "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-gray-600 hover:text-gray-900";
+            }
+
+            render();
+        }
+
+        function render() {
+            const container = document.getElementById('org-container');
+            let html = renderCoordinacion();
+
+            if (currentView === 'original') {
+                // VISTA ORIGINAL PLANO
+                let areasHtml = areas.map(area => `
+                    <div class="relative">
+                        <div class="absolute -top-8 left-1/2 w-0.5 h-8 bg-gray-300 -translate-x-1/2"></div>
+                        ${renderCard(area)}
+                    </div>
+                `).join('');
+
+                html += `
+                <div class="relative animate-fade-in">
+                    <div class="absolute top-0 left-[10%] right-[10%] h-0.5 bg-gray-300"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 pt-8">
+                        ${areasHtml}
+                    </div>
+                </div>`;
+            } else {
+                // VISTA ESTRATÉGICA (AGRUPADA)
+                html += `
+                <div class="relative animate-fade-in">
+                    <div class="absolute top-0 left-[16.6%] right-[16.6%] h-0.5 bg-gray-300"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-8">
+                        
+                        <!-- Talento y Cultura -->
+                        <div class="relative flex flex-col bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-sm">
+                            <div class="absolute -top-8 left-1/2 w-0.5 h-8 bg-gray-300 -translate-x-1/2"></div>
+                            <div class="text-center mb-6">
+                                <h3 class="font-black text-slate-800 text-xl tracking-tight">Talento y Cultura</h3>
+                                <p class="text-sm font-medium text-slate-500">Total: 3 personas</p>
+                            </div>
+                            <div class="grid grid-cols-1 gap-5 flex-grow">
+                                ${renderCard(areas[0], "Gestión / Operaciones HR")}
+                                ${renderCard(areas[1], "Desarrollo Organizacional")}
+                            </div>
+                        </div>
+
+                        <!-- Tecnología y Datos -->
+                        <div class="relative flex flex-col bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-sm">
+                            <div class="absolute -top-8 left-1/2 w-0.5 h-8 bg-gray-300 -translate-x-1/2"></div>
+                            <div class="text-center mb-6">
+                                <h3 class="font-black text-slate-800 text-xl tracking-tight">Tecnología y Datos</h3>
+                                <p class="text-sm font-medium text-slate-500">Total: 4 personas</p>
+                            </div>
+                            <div class="grid grid-cols-1 gap-5 flex-grow">
+                                ${renderCard(areas[2], "Analytics & BI")}
+                                ${renderCard(areas[3], "IT & Desarrollo")}
+                            </div>
+                        </div>
+
+                        <!-- Operaciones -->
+                        <div class="relative flex flex-col bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-sm">
+                            <div class="absolute -top-8 left-1/2 w-0.5 h-8 bg-gray-300 -translate-x-1/2"></div>
+                            <div class="text-center mb-6">
+                                <h3 class="font-black text-slate-800 text-xl tracking-tight">Operaciones</h3>
+                                <p class="text-sm font-medium text-slate-500">Total: 3 personas</p>
+                            </div>
+                            <div class="grid grid-cols-1 gap-5 flex-grow">
+                                ${renderCard(areas[4], "Excelencia Operacional")}
+                                
+                                <div class="bg-orange-100/50 border border-orange-200 rounded-xl p-4 mt-auto">
+                                    <p class="text-sm text-orange-900 leading-relaxed">
+                                        <strong>💡 Justificación Estratégica:</strong><br/>
+                                        Distribuimos a los 4 Lic. en Administración para dotar de "músculo de gestión" a las áreas con mayor carga operativa e integrativa.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`;
+            }
+
+            container.innerHTML = html;
+            
+            // Re-renderizar los íconos de Lucide tras actualizar el DOM
+            lucide.createIcons();
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            render();
+            // Animación CSS simple para los cambios de vista
+            const style = document.createElement('style');
+            style.innerHTML = `
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+            `;
+            document.head.appendChild(style);
+        });
+
+    </script>
+</body>
+</html>
